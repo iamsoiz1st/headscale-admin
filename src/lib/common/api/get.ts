@@ -1,5 +1,6 @@
-import { API_URL_NODE, API_URL_POLICY, API_URL_PREAUTHKEY, API_URL_USER, apiGet } from '$lib/common/api';
+import { API_URL_NODE, API_URL_POLICY, API_URL_PREAUTHKEY, API_URL_USER, API_URL_HEALTH, apiGet } from '$lib/common/api';
 import type {
+	ApiHealth,
 	ApiNodes,
 	ApiPolicy,
 	ApiPreAuthKeys,
@@ -10,6 +11,12 @@ import type {
 } from '$lib/common/types';
 import { debug } from '../debug';
 
+export async function getHealth(init?: RequestInit): Promise<ApiHealth> {
+	const health = await apiGet<ApiHealth>(API_URL_HEALTH, init);
+	debug("Healthcheck:", health);
+	return health;
+}
+
 export async function getPreAuthKeys(
 	user_ids?: string[],
 	init?: RequestInit,
@@ -17,24 +24,13 @@ export async function getPreAuthKeys(
 	if (user_ids == undefined) {
 		user_ids = (await getUsers(init)).map((u) => u.id);
 	}
-	const promises: Promise<ApiPreAuthKeys>[] = [];
-	let preAuthKeysAll: PreAuthKey[] = [];
 
-	user_ids.forEach(async (user_id: string) => {
-		if(user_id != ""){
-			promises.push(
-				apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY + '?user=' + user_id, init),
-			);
-		}
-	});
+	const promises = user_ids
+		.filter((user_id) => user_id !== '')
+		.map((user_id) => apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY + '?user=' + user_id, init));
 
-	promises.forEach(async (p) => {
-		const { preAuthKeys } = await p;
-		preAuthKeysAll = preAuthKeysAll.concat(preAuthKeys);
-	});
-
-	await Promise.all(promises);
-	return preAuthKeysAll;
+	const results = await Promise.all(promises);
+	return results.flatMap(({ preAuthKeys }) => preAuthKeys);
 }
 
 type GetUserOptions = 

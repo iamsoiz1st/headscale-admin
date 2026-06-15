@@ -37,9 +37,10 @@
 		reorderDown,
 	}: PolicyListCardProps = $props()
 
-	const userNames = $derived(App.users.value.map((u) => {
-		return u.email ? u.email : u.name;
-	}).toSorted())
+	var filterSrc = $state('');
+	var filterDst = $state('');
+
+	const userNames = $derived((App.usersAcl ?? []).map((u: { name: string }) => u.name).toSorted())
 	const userNamesOptions = $derived(toOptions(userNames))
 	const tagNames = $derived(acl.getTagNames(true))
 	const tagNamesOptions = $derived(toOptions(tagNames))
@@ -85,6 +86,18 @@
 
 	let tabSetSrc = $state(0)
 	let tabSetDst = $state(0)
+	
+	$effect(() => {
+		if (tabSetSrc !== undefined) {
+			filterSrc = ""
+		}
+	})
+
+	$effect(() => {
+		if (tabSetDst !== undefined) {
+			filterDst = ""
+		}
+	})
 
 	const tabs = [
 		{ name: "custom", title: "Custom", logo: RawMdiPencil },
@@ -270,10 +283,16 @@
 			</div>
 			<div class="mb-6">
 				{#if optionsSrc != undefined}
+				<input
+					autocomplete="off"
+					class="input rounded-md mt-2"
+					placeholder="Filter..."
+					bind:value={filterSrc}
+				/>
 				<div class="card w-full h-32 p-4 mt-2 overflow-y-auto" tabindex="-1">
 					<Autocomplete
 						class="rounded-md"
-						options={optionsSrc}
+						options={optionsSrc.filter(o => o.label.toLowerCase().includes(filterSrc.toLowerCase()) || o.value.toLowerCase().includes(filterSrc.toLowerCase()))}
 						on:selection={(evt) => {
 							srcNewHost = evt.detail.label
 						}}
@@ -336,10 +355,16 @@
 			</div>
 			<div class="mb-6">
 				{#if optionsDst != undefined}
+				<input
+					autocomplete="off"
+					class="input rounded-md mt-2"
+					placeholder="Filter..."
+					bind:value={filterDst}
+				/>
 				<div class="card w-full h-32 p-4 mt-2 overflow-y-auto" tabindex="-1">
 					<Autocomplete
 						class="rounded-md"
-						options={optionsDst}
+						options={optionsDst.filter(o => o.label.toLowerCase().includes(filterDst.toLowerCase()) || o.value.toLowerCase().includes(filterDst.toLowerCase()))}
 						on:selection={(evt) => {
 							dstNewHost = evt.detail.label
 						}}

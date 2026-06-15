@@ -64,7 +64,21 @@ export function toUrl(path: string): string {
 
 async function apiFetch<T>(path: string, init?: RequestInit, verbose: boolean = false): Promise<T> {
 	try {
-		const response = await fetch(toUrl(path), { ...headers(), ...init });
+		if (init === undefined) {
+			init = {};
+		}
+
+		// merge headers with init
+		if (init.headers) {
+			init.headers = {
+				...headers().headers,
+				...init.headers,
+			};
+		} else {
+			init.headers = headers().headers;
+		}
+
+		const response = await fetch(toUrl(path), init);
 		if (verbose) {
 			debug(response);
 		}
@@ -100,6 +114,13 @@ export async function apiPost<T>(
 	verbose: boolean = false,
 ): Promise<T> {
 	const body = JSON.stringify(data ?? {});
+	init = {
+		...init,
+		headers: {
+			'Content-Type': 'application/json',
+			...init?.headers,
+		},
+	};
 	return await apiFetch<T>(path, { method: 'POST', body, ...init }, verbose);
 }
 
@@ -110,6 +131,13 @@ export async function apiPut<T>(
 	verbose: boolean = false,
 ): Promise<T> {
 	const body = JSON.stringify(data ?? {});
+	init = {
+		...init,
+		headers: {
+			'Content-Type': 'application/json',
+			...init?.headers,
+		},
+	};
 	return await apiFetch<T>(path, { method: 'PUT', body, ...init }, verbose);
 }
 

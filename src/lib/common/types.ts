@@ -214,3 +214,7 @@ export type Deployment = {
 	acceptExitNode: boolean;
 	acceptExitNodeValue: string;
 };
+
+export type ApiHealth = {
+	databaseConnectivity: boolean;
+}
