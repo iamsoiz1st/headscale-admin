@@ -177,6 +177,23 @@
 				/>
 			</div>
 
+			<div class="flex-row">
+				<span class="block text-lg font-medium text-gray-700 dark:text-gray-200">ACL Database Status:</span>
+
+				{#if App.apiHealth.value === null}
+				<div class="mt-2 text-sm">
+					<span class="text-gray-500 dark:text-gray-400">Unknown</span>
+				</div>
+				{:else}
+				<div class="mt-2 text-sm">
+					<span class={App.apiHealth.value.databaseConnectivity ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+						{App.apiHealth.value.databaseConnectivity ? "Healthy" : "Unhealthy"}
+					</span>
+				</div>
+				{/if}
+			</div>
+
+
 			<div class="flex items-center">
 				<input
 					id="debugging"
@@ -193,6 +210,9 @@
 			<div class="flex items-start justify-between space-x-4">
 				<button type="button" class="btn btn-sm rounded-md variant-ghost-primary w-full" onclick={() => console.log(JSON.stringify(App.users.value, null, 4))}>
 					Log Users
+				</button>
+				<button type="button" class="btn btn-sm rounded-md variant-ghost-primary w-full" onclick={() => console.log(JSON.stringify(App.usersAcl, null, 4))}>
+					Log ACL Users
 				</button>
 				<button type="button" class="btn btn-sm rounded-md variant-ghost-primary w-full" onclick={() => console.log(JSON.stringify(App.nodes.value, null, 4))}>
 					Log Nodes

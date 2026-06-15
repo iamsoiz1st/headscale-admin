@@ -1,8 +1,8 @@
 import { Mutex } from 'async-mutex';
 
 import { browser } from '$app/environment';
-import type { User, Node, PreAuthKey, ApiKeyInfo, ApiApiKeys, Deployment } from '$lib/common/types';
-import { getUsers, getPreAuthKeys, getNodes } from '$lib/common/api/get';
+import type { User, Node, PreAuthKey, ApiKeyInfo, ApiApiKeys, Deployment, ApiHealth } from '$lib/common/types';
+import { getUsers, getPreAuthKeys, getNodes, getHealth } from '$lib/common/api/get';
 import type { ToastStore } from '@skeletonlabs/skeleton';
 import { apiGet } from './common/api';
 import { arraysEqual, clone, toastError, toastWarning } from './common/funcs';
@@ -76,7 +76,7 @@ export class StateLocal<T> {
         if(browser){
             const storedValue = localStorage.getItem(this.#key);
             if (storedValue) {
-                this.#value = this.deserialize(storedValue);
+                this.#value = this.deserializeTry(storedValue, valueDefault);
             } else {
                 this.#value = valueDefault;
             }
@@ -97,11 +97,26 @@ export class StateLocal<T> {
     deserialize(item: string): T {
         return JSON.parse(item);
     }
+
+    deserializeTry(item: string, defaultValue: T): T {
+        try {
+            return this.deserialize(item);
+        } catch {
+            return defaultValue;
+        }
+    }
 }
 
 // application data states
 export class HeadscaleAdmin {
     users = new State<User[]>([]);
+    usersAcl = $derived.by(() =>
+        this.users.value.map(user => ({
+            ...user,
+            name: user.name.includes('@') ? user.name : `${user.name}@`
+        }))
+    );
+
     nodes = new State<Node[]>([]);
     // routes = new State<Route[]>([]);
     preAuthKeys = new State<PreAuthKey[]>([]);
@@ -121,12 +136,15 @@ export class HeadscaleAdmin {
     apiUrl = new StateLocal<string>('apiUrl', '');
     apiKey = new StateLocal<string>('apiKey', '');
     apiTtl = new StateLocal<number>('apiTTL', 10000);
+    apiHealth = new State<ApiHealth | null>(null);
     apiKeyInfo = new StateLocal<ApiKeyInfo>('apiKeyInfo', {
         authorized: null,
         expires: '',
         informedUnauthorized: false,
         informedExpiringSoon: false,
     })
+
+    hasApiHealth = $derived<boolean>(isInitialized() && this.apiHealth.value !== null)
     hasApiKey = $derived<boolean>(isInitialized() && !!this.apiKey.value)
     hasApiUrl = $derived<boolean>(isInitialized() && !!this.apiUrl.value)
     hasApi = $derived(this.hasApiKey && this.hasApiUrl)
@@ -173,6 +191,17 @@ export class HeadscaleAdmin {
         acceptExitNodeValue: '',
     })
 
+    async populateApiHealth(): Promise<boolean> {
+        try {
+            const health = await apiGet<ApiHealth>(`/api/v1/health`);
+            this.apiHealth.value = health;
+            return true;
+        } catch {
+            this.apiHealth.value = null;
+            return false;
+        }
+    }
+
     async populateUsers(users?: User[]): Promise<boolean> {
         if (users === undefined) {
             users = await getUsers()
@@ -195,19 +224,6 @@ export class HeadscaleAdmin {
         return false
     }
 
-    /*
-    async populateRoutes(routes?: Route[]): Promise<boolean> {
-        if (routes === undefined) {
-            routes = await getRoutes()
-        }
-        if(!arraysEqual(this.routes.value, routes)){
-            this.routes.value = routes
-            return true
-        }
-        return false
-    }
-    */
-
     async populatePreAuthKeys(preAuthKeys?: PreAuthKey[]): Promise<boolean> {
         if (preAuthKeys === undefined) {
             preAuthKeys = await getPreAuthKeys()
@@ -221,21 +237,29 @@ export class HeadscaleAdmin {
 
     async populateApiKeyInfo(): Promise<boolean> {
         const { apiKeys } = await apiGet<ApiApiKeys>(`/api/v1/apikey`);
-        const myKey = apiKeys.filter((key) => this.apiKey.value.startsWith(key.prefix))[0];
-        const apiKeyInfo = this.apiKeyInfo.value
+        const myKey = apiKeys.find((key) => this.apiKey.value.startsWith(key.prefix));
+        if (myKey === undefined) {
+            this.apiKeyInfo.value = {
+                ...this.apiKeyInfo.value,
+                authorized: false,
+            };
+            return false;
+        }
+
+        const apiKeyInfo = this.apiKeyInfo.value;
         apiKeyInfo.expires = myKey.expiration;
         apiKeyInfo.authorized = true;
-        this.apiKeyInfo.value = {...apiKeyInfo};
+        this.apiKeyInfo.value = { ...apiKeyInfo };
         return true;
     }
 
     async populateAll(handler?: (err: unknown) => void, repeat: boolean = true){
         if (this.hasValidApi) {
             const promises = []
+            promises.push(this.populateApiHealth());
             promises.push(this.populateUsers());
             promises.push(this.populateNodes());
             promises.push(this.populatePreAuthKeys());
-            // promises.push(this.populateRoutes());
             promises.push(this.populateApiKeyInfo());
             await Promise.allSettled(promises);
             promises.forEach((p) => p.catch(handler));
@@ -269,7 +293,6 @@ export class HeadscaleAdmin {
 
 export const App = $state<HeadscaleAdmin>(new HeadscaleAdmin())
 
-
 function isInitialized(): boolean {
     return true
     // return typeof window !== 'undefined';
@@ -302,8 +325,7 @@ export function informUserExpiringSoon(toastStore: ToastStore) {
 		if (App.apiKeyInfo.value.informedExpiringSoon === true) {
 			return;
 		}
-		App.apiKeyInfo.value.informedUnauthorized = true;
-		App.apiKeyInfo.value.authorized = false;
+		App.apiKeyInfo.value.informedExpiringSoon = true;
 		toastWarning('API Key Expires Soon', toastStore);
 	});
 }

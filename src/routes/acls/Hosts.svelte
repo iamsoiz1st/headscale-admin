@@ -13,7 +13,7 @@
 
 	let {acl = $bindable(), loading = $bindable(false)}: {acl: ACLBuilder, loading?: boolean} = $props();
 
-	const userNames = $derived(App.users.value.map(u => u.name))
+	const userNames = $derived((App.usersAcl ?? []).map((u: { name: string }) => u.name))
 
 	let showCreateHost = $state(false);
 	let newHostName = $state('');
