@@ -10,6 +10,7 @@
 	import UserListPreAuthKeys from './UserListPreAuthKeys.svelte';
 	import UserProvider from './UserProvider.svelte';
 	import type { User } from '$lib/common/types';
+	import { isZeroDate } from '$lib/common/funcs';
 
 	type UserInfoProps = {
 		user: User,
@@ -28,13 +29,17 @@
 	<UserEmail bind:user />
 	<CardSeparator />
 	{/if}
+	{#if user.provider}
 	<UserProvider bind:user />
 	<CardSeparator />
+	{/if}
+	{#if !isZeroDate(user.createdAt)}
 	<ItemCreatedAt bind:item={user} />
 	<CardSeparator />
+	{/if}
 	<UserListNodes bind:user />
 	<CardSeparator />
-	{#if user.name || user.email}
+	{#if user.id}
 	<UserListPreAuthKeys bind:user />
 	<CardSeparator />
 	{/if}

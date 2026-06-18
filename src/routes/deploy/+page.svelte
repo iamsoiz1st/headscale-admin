@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		copyToClipboard,
-		isExpired,
 		isValidCIDR,
 		isValidTag,
 		toastError,
@@ -10,23 +9,66 @@
 	import DeployCheck from './DeployCheck.svelte';
 	import Page from '$lib/page/Page.svelte';
 	import PageHeader from '$lib/page/PageHeader.svelte';
-	import type { Deployment, PreAuthKey } from '$lib/common/types';
+	import type { Deployment, User } from '$lib/common/types';
 	import { InputChip, getToastStore } from '@skeletonlabs/skeleton';
 	import { page } from '$app/state';
-	import { slide } from 'svelte/transition';
-
+	import { createPreAuthKey } from '$lib/common/api';
 	import { App } from '$lib/States.svelte';
 
+	let deployment: Deployment = $state(App.deploymentDefaults.value);
+	let preAuthKeyLoading = $state(false);
+	let preAuthKeySettings = $state(defaultPreAuthKeySettings());
 	const ToastStore = getToastStore();
 
-	function createFilter(user_id: string) {
-		return (pak: PreAuthKey) => {
-			return pak.user.id === user_id && !(pak.used && !pak.reusable) && !isExpired(pak.expiration);
+	function defaultExpires(hours: number = 1, minutes: number = 0) {
+		const tzOffset = new Date().getTimezoneOffset() * 60 * 1000;
+		return new Date(Date.now() - tzOffset + minutes * 60 * 1000 + hours * 60 * 60 * 1000)
+			.toISOString()
+			.split(':')
+			.slice(0, 2)
+			.join(':');
+	}
+
+	function defaultPreAuthKeySettings() {
+		return {
+			ephemeral: false,
+			reusable: false,
+			expiration: defaultExpires(),
 		};
 	}
 
-	// $: deployment = defaultDeployment();
-	let deployment: Deployment = $state(App.deploymentDefaults.value);
+	function selectedPreAuthUser(): User | undefined {
+		return App.users.value.find((user) => user.id === deployment.preAuthKeyUser);
+	}
+
+	async function generatePreAuthKey() {
+		const user = selectedPreAuthUser();
+		if (!user) {
+			return;
+		}
+
+		preAuthKeyLoading = true;
+		try {
+			const preAuthKey = await createPreAuthKey(
+				user,
+				preAuthKeySettings.ephemeral,
+				preAuthKeySettings.reusable,
+				preAuthKeySettings.expiration,
+			);
+			deployment.preAuthKey = preAuthKey.key;
+			toastSuccess('PreAuth Key created. Copy it now, it can only be viewed once.', ToastStore);
+		} catch (e) {
+			toastError('Failed to create PreAuth Key: ' + e, ToastStore);
+		} finally {
+			preAuthKeyLoading = false;
+		}
+	}
+
+	$effect(() => {
+		if (deployment.preAuthKeyUser === '') {
+			deployment.preAuthKey = '';
+		}
+	});
 
 	let craftCommand = (d: Deployment) => {
 		const cmd = ['tailscale up --login-server=' + (App.apiUrl.value || page.url.origin)];
@@ -116,24 +158,64 @@
 			name="PreAuth Key"
 			help="A generated key to automatically authenticate the node for a given user"
 		>
-			<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-3">
 				<select bind:value={deployment.preAuthKeyUser} class="input rounded-md">
-					<option value=""></option>
+					<option value="">Select user</option>
 					{#each App.users.value as user}
 						<option value={user.id}>{user.name}</option>
 					{/each}
 				</select>
 				{#if deployment.preAuthKeyUser}
-					<div transition:slide>
-						<select bind:value={deployment.preAuthKey} class="input rounded-md">
-							<option value=""
-								>{App.preAuthKeys.value.filter(createFilter(deployment.preAuthKeyUser)).length} Valid Key(s)</option
-							>
-							{#each App.preAuthKeys.value.filter(createFilter(deployment.preAuthKeyUser)) as preAuthKey}
-								<option value={preAuthKey.key}>{preAuthKey.key}</option>
-							{/each}
-						</select>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<div>
+							<label class="label flex flex-col gap-2">
+								<span>Expiration</span>
+								<input
+									type="datetime-local"
+									class="input rounded-md w-full"
+									bind:value={preAuthKeySettings.expiration}
+								/>
+							</label>
+						</div>
+						<div class="grid gap-2">
+							<label class="flex items-center space-x-2">
+								<input
+									type="checkbox"
+									class="checkbox"
+									bind:checked={preAuthKeySettings.ephemeral}
+								/>
+								<span>Ephemeral</span>
+							</label>
+							<label class="flex items-center space-x-2">
+								<input
+									type="checkbox"
+									class="checkbox"
+									bind:checked={preAuthKeySettings.reusable}
+								/>
+								<span>Reusable</span>
+							</label>
+						</div>
 					</div>
+					<div class="flex flex-row flex-wrap gap-2">
+						<button
+							class="btn btn-sm rounded-md variant-filled-success"
+							disabled={preAuthKeyLoading}
+							onclick={generatePreAuthKey}
+						>
+							Generate PreAuth Key
+						</button>
+						{#if deployment.preAuthKey}
+							<button
+								class="btn btn-sm rounded-md variant-filled-secondary"
+								onclick={() => copyToClipboard(deployment.preAuthKey, ToastStore)}
+							>
+								Copy Key
+							</button>
+						{/if}
+					</div>
+					{#if deployment.preAuthKey}
+						<p class="text-xs text-slate-600 dark:text-slate-300">This key can only be viewed once. Copy it now.</p>
+					{/if}
 				{/if}
 			</div>
 		</DeployCheck>

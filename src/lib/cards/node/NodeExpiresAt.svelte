@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CardListEntry from '../CardListEntry.svelte';
 	import Delete from '$lib/parts/Delete.svelte';
+	import RawMdiEncryptionExpiration from '~icons/mdi/encryption-expiration';
 	import type { Node } from '$lib/common/types';
 	import { getTimeDifference, getTime, getTimeDifferenceColor } from '$lib/common/funcs';
 	import { expireNode } from '$lib/common/api';
@@ -34,6 +35,7 @@
 		</span>
 		<span class="items-center">
 			<Delete
+				logo={RawMdiEncryptionExpiration}
 				func={async () => {
 					loading = true
 					try{

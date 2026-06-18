@@ -18,19 +18,23 @@ export async function getHealth(init?: RequestInit): Promise<ApiHealth> {
 }
 
 export async function getPreAuthKeys(
-	user_ids?: string[],
+	// user_ids?: string[],
 	init?: RequestInit,
 ): Promise<PreAuthKey[]> {
+	/*
 	if (user_ids == undefined) {
 		user_ids = (await getUsers(init)).map((u) => u.id);
 	}
+	*/
 
+	/*
 	const promises = user_ids
 		.filter((user_id) => user_id !== '')
 		.map((user_id) => apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY + '?user=' + user_id, init));
-
-	const results = await Promise.all(promises);
-	return results.flatMap(({ preAuthKeys }) => preAuthKeys);
+	*/
+	const { preAuthKeys: results } = await apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY);
+	debug('Fetched PreAuth Keys:', results);
+	return results
 }
 
 type GetUserOptions = 

@@ -49,6 +49,13 @@ const DurationInfinite = new Date(DurationInfiniteString);
 const ExpirationColorFuture = 'text-success-800 dark:text-success-400';
 const ExpirationColorPast = 'text-error-600 dark:text-error-400';
 
+export function isZeroDate(date: Date | string): boolean {
+	if (typeof date === 'string') {
+		date = new Date(date);
+	}
+	return date.getTime() == DurationInfinite.getTime();
+}
+
 export function isExpired(expiry: string): boolean {
 	const date = new Date(expiry ?? DurationInfiniteString);
 	const now = new Date();
@@ -408,8 +415,7 @@ export function filterNode(node: Node, filterString: string, onlineStatus: Onlin
 		return (
 			r.test(node.name) ||
 			r.test(node.givenName) ||
-			node.forcedTags.map(getTag).some((tag) => r.test(tag)) ||
-			node.validTags.map(getTag).some((tag) => r.test(tag))
+			node.tags.map(getTag).some((tag) => r.test(tag))
 		);
 	} catch (err) {
 		return true;

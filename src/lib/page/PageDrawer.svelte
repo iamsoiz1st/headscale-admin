@@ -13,7 +13,7 @@
 <Drawer>
 	<div class="px-4 lg:px-8 pt-4">
 		{#if $drawerStore?.id?.startsWith('userDrawer-')}
-			<DrawerEntry title={App.users.value.find((u) => u.id === $drawerStore?.meta.id)?.name ?? 'N/A'}>
+			<DrawerEntry title={App.users.value.find((u) => u.id === $drawerStore?.meta.id)?.name ?? ''}>
 				<UserInfo user={App.users.value.find((u) => u.id === $drawerStore?.meta.id) || $drawerStore.meta} />
 			</DrawerEntry>
 		{/if}

@@ -237,7 +237,7 @@ export class HeadscaleAdmin {
 
     async populateApiKeyInfo(): Promise<boolean> {
         const { apiKeys } = await apiGet<ApiApiKeys>(`/api/v1/apikey`);
-        const myKey = apiKeys.find((key) => this.apiKey.value.startsWith(key.prefix));
+        const myKey = apiKeys.find((key) => this.apiKey.value.startsWith(key.prefix.replace(/\*+$/, "")));
         if (myKey === undefined) {
             this.apiKeyInfo.value = {
                 ...this.apiKeyInfo.value,
@@ -245,7 +245,6 @@ export class HeadscaleAdmin {
             };
             return false;
         }
-
         const apiKeyInfo = this.apiKeyInfo.value;
         apiKeyInfo.expires = myKey.expiration;
         apiKeyInfo.authorized = true;
@@ -288,6 +287,10 @@ export class HeadscaleAdmin {
 
     updateValue(valued: Valued<Identified[]>, item: Identified) {
         valued.value = valued.value.map((itemOld) => (itemOld.id === item.id ? item : itemOld));
+    }
+
+    removeValue(valued: Valued<Identified[]>, item: Identified) {
+        valued.value = valued.value.filter((itemOld) => itemOld.id !== item.id);
     }
 }
 

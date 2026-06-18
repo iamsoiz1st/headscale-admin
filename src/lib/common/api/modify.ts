@@ -7,7 +7,7 @@ import type {
 	User,
 } from '$lib/common/types';
 import { debug } from '../debug';
-import { apiPost, apiPut } from './base';
+import { apiPost, apiPut, apiDelete } from './base';
 import type { ACLBuilder } from '../acl.svelte';
 import { API_URL_NODE, API_URL_POLICY, API_URL_PREAUTHKEY, API_URL_USER } from './url';
 import { createApiKey } from './create';
@@ -29,11 +29,10 @@ export async function renameNode(n: Node, nameNew: string): Promise<Node> {
 	return node;
 }
 
-export async function changeNodeOwner(n: Node, newUserID: string): Promise<Node> {
-	const path = `${API_URL_NODE}/${n.id}/user`;
-	const { node } = await apiPost<ApiNode>(path, {user: newUserID});
-	debug('Re-assigned Node from "' + n.user.name + '" to "' + node.user.name + '"');
-	return node;
+export async function deletePreAuthKey(pak: PreAuthKey) {
+	const params = new URLSearchParams({ id: String(pak.id) });
+	const path = `${API_URL_PREAUTHKEY}?${params}`;
+	return await apiDelete(path)
 }
 
 export async function expirePreAuthKey(pak: PreAuthKey) {
