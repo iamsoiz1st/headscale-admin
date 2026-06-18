@@ -15,7 +15,7 @@
 
 	let { node, loading = $bindable(false) }: NodeExpiresAtProps = $props()
 
-	let diff = $state(getTimeDifference(getTime(node.expiry)));
+	let diff = $derived.by(() => getTimeDifference(getTime(node.expiry)));
 
 	onMount(() => {
 		const interval = setInterval(() => {
