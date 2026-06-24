@@ -1,0 +1,13 @@
+allowBuilds:
+  '@openapitools/openapi-generator-cli': true
+  '@parcel/watcher': true
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@iconify/json@2.2.488'
+  - '@sveltejs/kit@2.66.0'
+  - '@iconify/json@2.2.490'
+  - autoprefixer@10.5.2
+  - svelte-check@4.7.1
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
