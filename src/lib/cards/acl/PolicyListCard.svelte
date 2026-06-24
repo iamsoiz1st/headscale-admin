@@ -16,6 +16,7 @@
 
 	import ListEntry from './ListEntry.svelte';
 	import Tabbed from '$lib/parts/Tabbed.svelte';
+	import EntityListSelector from './EntityListSelector.svelte';
 	import { App } from '$lib/States.svelte';
 	import { slide } from 'svelte/transition';
 
@@ -37,9 +38,9 @@
 		reorderDown,
 	}: PolicyListCardProps = $props()
 
-	var filterSrc = $state('');
 	var filterDst = $state('');
 
+	// Needed for the dst section autocomplete
 	const userNames = $derived((App.usersAcl ?? []).map((u: { name: string }) => u.name).toSorted())
 	const userNamesOptions = $derived(toOptions(userNames))
 	const tagNames = $derived(acl.getTagNames(true))
@@ -48,6 +49,7 @@
 	const groupNamesOptions = $derived(toOptions(groupNames));
 	const hostNames = $derived(acl.getHostNames())
 	const hostNamesOptions = $derived(toOptions(hostNames));
+
 	const policy = $derived.by(() => {
 		return {
 			get policy() { return acl.getPolicy(idx) },
@@ -65,7 +67,7 @@
 		return {
 			get open() {
 				ACLBuilder.addPolicyMeta(policy.policy)
-				return policy.policy["#ha-meta"] !== undefined 
+				return policy.policy["#ha-meta"] !== undefined
 					&& policy.policy["#ha-meta"].open
 			},
 			set open(open: boolean) {
@@ -84,14 +86,7 @@
 		return state;
 	})
 
-	let tabSetSrc = $state(0)
 	let tabSetDst = $state(0)
-	
-	$effect(() => {
-		if (tabSetSrc !== undefined) {
-			filterSrc = ""
-		}
-	})
 
 	$effect(() => {
 		if (tabSetDst !== undefined) {
@@ -99,6 +94,7 @@
 		}
 	})
 
+	// Full tab set used by both src (via EntityListSelector) and dst (inline)
 	const tabs = [
 		{ name: "custom", title: "Custom", logo: RawMdiPencil },
 		{ name: "user", title: "User", logo: RawMdiTag },
@@ -106,23 +102,12 @@
 		{ name: "group", title: "Group", logo: RawMdiGroups },
 		{ name: "tag", title: "Tag", logo: RawMdiTag },
 	]
-	
-	const srcNewType = $derived(tabs[tabSetSrc].name)
-	let srcNewHost = $state('')
-	const srcNewHostEditable = $derived(srcNewType == "custom")
+
 	const dstNewType = $derived(tabs[tabSetDst].name)
 	let dstNewHost = $state('')
 	const dstNewHostEditable = $derived(dstNewType == "custom")
 	let dstNewPorts = $state('')
 	const dstNewPortsEditable = $derived(policy.proto != "icmp")
-
-	const optionsSrc = $derived(
-		srcNewType == "user" ? userNamesOptions :
-		srcNewType == "host" ? hostNamesOptions :
-		srcNewType == "group" ? groupNamesOptions:
-		srcNewType == "tag" ? tagNamesOptions:
-		undefined
-	)
 
 	const optionsDst = $derived(
 		dstNewType == "user" ? userNamesOptions :
@@ -147,20 +132,8 @@
 		}
 	}
 
-	function delSrc(srcIdx: number) {
-		policy.src.splice(srcIdx, 1)
-	}
-
 	function delDst(dstIdx: number) {
 		policy.dst.splice(dstIdx, 1)
-	}
-
-	function addSrc(host: string) {
-		if (host.length === 0) {
-			throw new Error("Invailid Host Provided")
-		}
-
-		policy.src.push(host)
 	}
 
 	function addDst(host: string, ports: string) {
@@ -210,11 +183,11 @@
 </script>
 
 <div class="flex flex-row w-full">
-	<div 
+	<div
         transition:slideX
         class="flex flex-col items-center space-y-0.5 text-secondary-700 dark:text-secondary-300 mr-2 w-auto"
     >
-        <button 
+        <button
             class={`btn-xs w-6 h-6 btn-icon rounded-md p-0 pt-1.5 leading-none text-xl`}
 			disabled={idx === 0}
             onclick={reorderUp}
@@ -237,7 +210,7 @@
 				<h3 class="font-mono mb-2 flex flex-row items-center">
 					<label for="policy-name">Name:</label>
 					<input
-						type="text" 
+						type="text"
 						name="policy-name"
 						class="input text-xs rounded-md ml-4"
 						autocomplete="off"
@@ -268,74 +241,7 @@
 			<h3 class="font-mono mb-2 flex flex-row items-center">
 				<span>Sources:</span>
 			</h3>
-			<div>
-				<TabGroup
-					justify="justify-left"
-					active="variant-filled-tertiary"
-					hover="hover:variant-soft-tertiary"
-					flex="flex-1 lg:flex-none"
-					rounded="rounded-md"
-					border=""
-					class="bg-surface-100-800-token w-full px-2 py-2"
-				>
-					<Tabbed {tabs} bind:tabSet={tabSetSrc} />
-				</TabGroup>
-			</div>
-			<div class="mb-6">
-				{#if optionsSrc != undefined}
-				<input
-					autocomplete="off"
-					class="input rounded-md mt-2"
-					placeholder="Filter..."
-					bind:value={filterSrc}
-				/>
-				<div class="card w-full h-32 p-4 mt-2 overflow-y-auto" tabindex="-1">
-					<Autocomplete
-						class="rounded-md"
-						options={optionsSrc.filter(o => o.label.toLowerCase().includes(filterSrc.toLowerCase()) || o.value.toLowerCase().includes(filterSrc.toLowerCase()))}
-						on:selection={(evt) => {
-							srcNewHost = evt.detail.label
-						}}
-					/>
-				</div>
-				{/if}
-				<div class="flex flex-row space-x-2">
-					<input
-						autocomplete="off"
-						class="input rounded-md mt-2"
-						placeholder="Src Object..."
-						bind:value={srcNewHost}
-						disabled={!srcNewHostEditable} />
-					<button
-						class="btn btn-sm rounded-md mt-2 variant-soft-tertiary"
-						onclick={()=>{
-							try{
-								addSrc(srcNewHost)
-								srcNewHost = ""
-							} catch(e) {
-								if (e instanceof Error) {
-									toastError('', ToastStore, e)
-								}
-								debug(e)
-							}
-						}}
-					>
-						Add
-					</button>
-				</div>
-			</div>
-			{#each policy.src as src, i}
-			<div
-				class="card py-3 px-4 grid grid-cols-12 backdrop-brightness-100 bg-white/25 dark:bg-white/5 rounded-md"
-			>
-				<div class="col-span-10 text-wrap hyphens-auto flex flex-row">
-					<span class="font-extralight rounded-md">{src}</span>
-				</div>
-				<div class="col-span-2 text-right">
-					<Delete func={()=>{delSrc(i)}} disabled={loading} />
-				</div>
-			</div>
-			{/each}
+			<EntityListSelector {acl} {tabs} items={policy.src} {loading} placeholder="Src Object..." />
 			<!-- --- -->
 			<h3 class="font-mono mb-2 mt-6 flex flex-row items-center">
 				<span>Destinations:</span>

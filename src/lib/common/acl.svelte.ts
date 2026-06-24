@@ -14,6 +14,8 @@ export type AclPolicies = AclPolicy[]
 export type AclSshRules = AclSshRule[]
 export type AclPoliciesIndexed = {policy: AclPolicy, idx: number}[]
 export type AclSshRulesIndexed = {rule: AclSshRule, idx: number}[]
+export type AutoApproverRoutes = { [route: string]: string[] }
+export type AclAutoApprovers = { routes?: AutoApproverRoutes, exitNode?: string[]}
 
 // metadata for ACL policy entries
 export type HAMeta = {
@@ -54,6 +56,7 @@ export type ACL = {
     hosts: AclHosts, // keys are DNS-style hostnames
     acls: AclPolicies,
     ssh?: AclSshRules,
+    autoApprovers?: AclAutoApprovers,
 }
 
 export type PrefixType = "group" | "tag"
@@ -73,6 +76,7 @@ export class ACLBuilder implements ACL {
     hosts = $state<AclHosts>({})
     acls = $state<AclPolicies>([])
     ssh = $state<AclSshRules|undefined>(undefined)
+    autoApprovers = $state<Required<AclAutoApprovers>>({ routes: {}, exitNode: [] })
 
     constructor(
         groups: AclGroups,
@@ -80,21 +84,32 @@ export class ACLBuilder implements ACL {
         hosts: AclHosts,
         acls: AclPolicies,
         ssh?: AclSshRules,
+        autoApprovers?: AclAutoApprovers,
     ) {
         this.groups = groups
         this.tagOwners = tagOwners
         this.hosts = hosts
         this.acls = acls
         this.ssh = ssh
+        this.autoApprovers = {
+            routes: autoApprovers?.routes ?? {},
+            exitNode: autoApprovers?.exitNode ?? [],
+        }
     }
 
     JSON(space: number = 0): string {
+        const hasRoutes = Object.keys(this.autoApprovers.routes).length > 0
+        const hasExitNode = this.autoApprovers.exitNode.length > 0
         return JSON.stringify({
             groups: this.groups,
             tagOwners: this.tagOwners,
             hosts: this.hosts,
             acls: this.acls,
             ssh: this.ssh,
+            ...(hasRoutes || hasExitNode ? { autoApprovers: {
+                ...(hasRoutes ? { routes: this.autoApprovers.routes } : {}),
+                ...(hasExitNode ? { exitNode: this.autoApprovers.exitNode } : {}),
+            }} : {}),
         }, null, space)
     }
 
@@ -131,6 +146,10 @@ export class ACLBuilder implements ACL {
             {...acl.hosts},
             [...acl.acls],
             [...ssh],
+            acl.autoApprovers ? {
+                routes: acl.autoApprovers.routes ? {...acl.autoApprovers.routes} : undefined,
+                exitNode: acl.autoApprovers.exitNode ? [...acl.autoApprovers.exitNode] : undefined,
+            } : undefined,
         )
     }
 
@@ -739,6 +758,32 @@ export class ACLBuilder implements ACL {
         if (this.ssh !== undefined) {
             this.ssh.splice(idx, 1)
         }
+    }
+
+    /*
+     * AUTO APPROVERS:
+     * --------------------------------
+     * getAutoApproverRouteEntries()
+     * createAutoApproverRoute(route)
+     * deleteAutoApproverRoute(route)
+     */
+
+    getAutoApproverRouteEntries(): [string, string[]][] {
+        return Object.entries(this.autoApprovers.routes)
+    }
+
+    createAutoApproverRoute(route: string) {
+        if (this.autoApprovers.routes[route] !== undefined) {
+            throw new Error(`Auto approver route '${route}' already exists`)
+        }
+        this.autoApprovers.routes[route] = []
+    }
+
+    deleteAutoApproverRoute(route: string) {
+        if (this.autoApprovers.routes[route] === undefined) {
+            throw new Error(`Auto approver route '${route}' does not exist`)
+        }
+        delete this.autoApprovers.routes[route]
     }
 }
 

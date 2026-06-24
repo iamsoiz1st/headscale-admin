@@ -8,6 +8,7 @@
 	import RawMdiGroups from '~icons/mdi/account-group';
 	import RawMdiSecurity from '~icons/mdi/security';
 	import RawMdiTag from '~icons/mdi/tag';
+	import RawMdiAutomatic from '~icons/mdi/automatic';
 
 	import { ACLBuilder, type ACL } from '$lib/common/acl.svelte';
 	import { debug } from '$lib/common/debug';
@@ -22,6 +23,7 @@
 	import Hosts from './Hosts.svelte';
 	import Policies from './Policies.svelte';
 	import TagOwners from './TagOwners.svelte'
+	import AutoApprovers from './AutoApprovers.svelte';
 	import SshRules from './SshRules.svelte';
 
 	const ToastStore = getToastStore()
@@ -37,6 +39,7 @@
 		{ name: 'hosts', title: 'Hosts', logo: RawMdiDevices },
 		{ name: 'policies', title: 'Policies', logo: RawMdiSecurity },
 		{ name: 'ssh', title: 'SSH', logo: RawMdiConsole },
+		{ name: 'auto-approvers', title: 'Auto Approvers', logo: RawMdiAutomatic },
 		{ name: 'config', title: 'Config', logo: RawMdiCodeJSON },
 	];
 
@@ -75,6 +78,8 @@
 				<Policies bind:loading bind:acl />
 			{:else if tabs[tabSet].name == 'ssh'}
 				<SshRules bind:loading bind:acl />
+			{:else if tabs[tabSet].name == 'auto-approvers'}
+				<AutoApprovers bind:loading bind:acl />
 			{:else if tabs[tabSet].name == 'config'}
 				<Config bind:loading bind:acl />
 			{/if}
