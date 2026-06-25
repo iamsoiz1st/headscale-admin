@@ -31,7 +31,7 @@
 	})
 </script>
 
-<div class="flex items-center justify-between">
+<div class="col-span-12 flex w-full items-center justify-between">
 	<div class="flex items-center gap-3">
 		<button
 			class="font-mono flex items-center border-2 border-dashed w-auto py-1.5 px-2 mr-3 border-slate-300 dark:border-slate-700 whitespace-nowrap"
@@ -42,7 +42,7 @@
 			</span>
 			{preAuthKey.key.substring(11, 23)}
 		</button>
-		<div class="items-center flex flex-row gap-1 lg:gap-2">
+		<div class="flex items-center flex-row gap-1 lg:gap-2">
 			<span
 				class="badge badge-glass {preAuthKey.used
 					? 'variant-ghost-success'
@@ -58,7 +58,7 @@
 				Expired
 			</span>
 		</div>
-		<div class="items-center flex flex-row gap-1 lg:gap-2">
+		<div class="flex items-center flex-row gap-1 lg:gap-2">
 			<span
 				class="badge badge-glass {preAuthKey.ephemeral
 					? 'variant-ghost-secondary'
@@ -75,7 +75,7 @@
 			</span>
 		</div>
 	</div>
-	<div class="flex-shrink-0">
+	<div class="flex">
 		<span class="mr-2">
 			<Delete
 				func={async () => {

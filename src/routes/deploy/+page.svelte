@@ -77,11 +77,12 @@
 		d.shieldsUp && cmd.push('--shields-up');
 		d.generateQR && cmd.push('--qr');
 		d.reset && cmd.push('--reset');
-		d.operator && d.operatorValue != '' && cmd.push('--operator=' + d.operatorValue);
 		d.forceReauth && cmd.push('--force-reauth');
 		d.sshServer && cmd.push('--ssh');
 		d.usePreAuthKey && d.preAuthKey !== '' && cmd.push('--auth-key=' + d.preAuthKey);
 		d.unattended && cmd.push('--unattended')
+		d.operator && d.operatorValue != '' && cmd.push('--operator=' + d.operatorValue);
+		d.customHostname && d.customHostnameValue != '' && cmd.push('--hostname=' + d.customHostnameValue)
 
 		// advertise
 		d.advertiseExitNode && cmd.push('--advertise-exit-node');
@@ -137,13 +138,6 @@
 			help="Reset unspecified settings to default values"
 		/>
 		<DeployCheck
-			bind:checked={deployment.operator}
-			name="Operator"
-			help="(Unix Only) Run as a different user"
-		>
-			<input type="text" class="input text-sm rounded-md" bind:value={deployment.operatorValue} />
-		</DeployCheck>
-		<DeployCheck
 			bind:checked={deployment.forceReauth}
 			name="Force Reauthentication"
 			help="Force user to re-authenticate to Headscale server"
@@ -154,12 +148,38 @@
 			help="Run a local SSH server accessible by administrators"
 		/>
 		<DeployCheck
+			bind:checked={deployment.unattended}
+			name="Unattended"
+			help="Run the tailscale client in unattended mode (on startup)"
+		/>
+		<DeployCheck 
+			bind:checked={deployment.advertiseExitNodeLocalAccess}
+			name="Allow LAN Access"
+			help="Allow local network access while connected to the TailNet and using an exit node"
+		/>
+		<DeployCheck
+			bind:checked={deployment.operator}
+			name="Operator"
+			help="(Unix Only) Run as a different user"
+		>
+			<input type="text" class="input text-sm rounded-md" bind:value={deployment.operatorValue} />
+		</DeployCheck>
+		<DeployCheck 
+			bind:checked={deployment.customHostname}
+			name="Custom Hostname"
+			help="Set a custom hostname for the node"
+		>
+			<input type="text" class="input text-sm rounded-md" bind:value={deployment.customHostnameValue} />
+		</DeployCheck>
+
+		<p class="text-xl col-span-12"></p>
+		<DeployCheck
 			bind:checked={deployment.usePreAuthKey}
 			name="PreAuth Key"
 			help="A generated key to automatically authenticate the node for a given user"
 		>
 			<div class="flex flex-col gap-3">
-				<select bind:value={deployment.preAuthKeyUser} class="input rounded-md">
+				<select onchange={() => {deployment.preAuthKey = ''}} bind:value={deployment.preAuthKeyUser} class="input rounded-md">
 					<option value="">Select user</option>
 					{#each App.users.value as user}
 						<option value={user.id}>{user.name}</option>
@@ -219,16 +239,6 @@
 				{/if}
 			</div>
 		</DeployCheck>
-		<DeployCheck
-			bind:checked={deployment.unattended}
-			name="Unattended"
-			help="Run the tailscale client in unattended mode (on startup)"
-		/>
-		<DeployCheck 
-			bind:checked={deployment.advertiseExitNodeLocalAccess}
-			name="Allow LAN Access"
-			help="Allow local network access while connected to the TailNet and using an exit node"
-		/>
 
 		<p class="text-xl col-span-12 py-4">Advertise:</p>
 		<DeployCheck

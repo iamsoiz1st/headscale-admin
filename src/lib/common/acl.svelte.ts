@@ -77,6 +77,10 @@ export class ACLBuilder implements ACL {
     acls = $state<AclPolicies>([])
     ssh = $state<AclSshRules|undefined>(undefined)
     autoApprovers = $state<Required<AclAutoApprovers>>({ routes: {}, exitNode: [] })
+    // Pass-through storage for any top-level or autoApprovers keys this code doesn't handle,
+    // so they survive a round-trip through the editor without being silently deleted.
+    extraFields: Record<string, unknown> = {}
+    autoApproversExtraFields: Record<string, unknown> = {}
 
     constructor(
         groups: AclGroups,
@@ -85,6 +89,8 @@ export class ACLBuilder implements ACL {
         acls: AclPolicies,
         ssh?: AclSshRules,
         autoApprovers?: AclAutoApprovers,
+        extraFields?: Record<string, unknown>,
+        autoApproversExtraFields?: Record<string, unknown>,
     ) {
         this.groups = groups
         this.tagOwners = tagOwners
@@ -95,18 +101,25 @@ export class ACLBuilder implements ACL {
             routes: autoApprovers?.routes ?? {},
             exitNode: autoApprovers?.exitNode ?? [],
         }
+        this.extraFields = extraFields ?? {}
+        this.autoApproversExtraFields = autoApproversExtraFields ?? {}
     }
 
     JSON(space: number = 0): string {
         const hasRoutes = Object.keys(this.autoApprovers.routes).length > 0
         const hasExitNode = this.autoApprovers.exitNode.length > 0
+        const hasAutoApproversExtra = Object.keys(this.autoApproversExtraFields).length > 0
+        const hasAutoApprovers = hasRoutes || hasExitNode || hasAutoApproversExtra
         return JSON.stringify({
+            // Known fields — spread extraFields first so our managed keys always win
+            ...this.extraFields,
             groups: this.groups,
             tagOwners: this.tagOwners,
             hosts: this.hosts,
             acls: this.acls,
             ssh: this.ssh,
-            ...(hasRoutes || hasExitNode ? { autoApprovers: {
+            ...(hasAutoApprovers ? { autoApprovers: {
+                ...this.autoApproversExtraFields,
                 ...(hasRoutes ? { routes: this.autoApprovers.routes } : {}),
                 ...(hasExitNode ? { exitNode: this.autoApprovers.exitNode } : {}),
             }} : {}),
@@ -138,18 +151,32 @@ export class ACLBuilder implements ACL {
             return this.fromPolicy(JWCC.parse<ACL>(acl))
         }
 
-        const ssh = acl.ssh ? [...acl.ssh] : []
+        // Separate known top-level keys from any unknown ones so we can round-trip them
+        const { groups, tagOwners, hosts, acls, ssh, autoApprovers, ...extraFields } = acl as Record<string, unknown> & ACL
+
+        // Same for the nested autoApprovers object
+        let knownAutoApprovers: AclAutoApprovers | undefined
+        let autoApproversExtraFields: Record<string, unknown> = {}
+        if (autoApprovers) {
+            const { routes, exitNode, ...autoApproversRest } = autoApprovers as Record<string, unknown> & AclAutoApprovers
+            knownAutoApprovers = { routes, exitNode }
+            autoApproversExtraFields = autoApproversRest
+        }
+
+        const sshArr = ssh ? [...ssh] : []
 
         return new ACLBuilder(
-            {...acl.groups},
-            {...acl.tagOwners},
-            {...acl.hosts},
-            [...acl.acls],
-            [...ssh],
-            acl.autoApprovers ? {
-                routes: acl.autoApprovers.routes ? {...acl.autoApprovers.routes} : undefined,
-                exitNode: acl.autoApprovers.exitNode ? [...acl.autoApprovers.exitNode] : undefined,
+            {...groups},
+            {...tagOwners},
+            {...hosts},
+            [...acls],
+            [...sshArr],
+            knownAutoApprovers ? {
+                routes: knownAutoApprovers.routes ? {...knownAutoApprovers.routes} : undefined,
+                exitNode: knownAutoApprovers.exitNode ? [...knownAutoApprovers.exitNode] : undefined,
             } : undefined,
+            extraFields,
+            autoApproversExtraFields,
         )
     }
 
