@@ -408,8 +408,8 @@ export function filterNode(node: Node, filterString: string, onlineStatus: Onlin
 		return (
 			r.test(node.name) ||
 			r.test(node.givenName) ||
-			node.forcedTags.map(getTag).some((tag) => r.test(tag)) ||
-			node.validTags.map(getTag).some((tag) => r.test(tag))
+			(node.forcedTags ?? []).map(getTag).some((tag) => r.test(tag)) ||
+			(node.validTags ?? []).map(getTag).some((tag) => r.test(tag))
 		);
 	} catch (err) {
 		return true;

@@ -221,7 +221,9 @@ export class HeadscaleAdmin {
 
     async populateApiKeyInfo(): Promise<boolean> {
         const { apiKeys } = await apiGet<ApiApiKeys>(`/api/v1/apikey`);
-        const myKey = apiKeys.filter((key) => this.apiKey.value.startsWith(key.prefix))[0];
+        // Headscale 0.28+ appends "***" to key prefixes — strip before matching
+        const myKey = apiKeys.find((key) => this.apiKey.value.startsWith(key.prefix.replaceAll('*', '')));
+        if (!myKey) throw new Error('API key not found in server key list');
         const apiKeyInfo = this.apiKeyInfo.value
         apiKeyInfo.expires = myKey.expiration;
         apiKeyInfo.authorized = true;

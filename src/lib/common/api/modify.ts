@@ -38,7 +38,8 @@ export async function changeNodeOwner(n: Node, newUserID: string): Promise<Node>
 
 export async function expirePreAuthKey(pak: PreAuthKey) {
 	const path = `${API_URL_PREAUTHKEY}/expire`;
-	const data = { user: pak.user.id, key: pak.key };
+	const data: Record<string, string> = { key: pak.key };
+	if (pak.user) data.user = pak.user.id;
 	await apiPost(path, data);
 }
 

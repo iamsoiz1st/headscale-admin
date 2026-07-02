@@ -78,7 +78,7 @@ export type ApiPreAuthKey = {
 
 export class PreAuthKey {
 	constructor(
-		public user: User,
+		public user: User | null,
 		public id: string,
 		public key: string,
 		public reusable: boolean,
@@ -145,6 +145,7 @@ export type Node = {
 	forcedTags: string[];
 	invalidTags: string[];
 	validTags: string[];
+	tags?: string[]; // Headscale 0.28+ unified tags field (normalized to forcedTags at fetch time)
 	givenName: string;
 	online: boolean;
 	approvedRoutes: string[];

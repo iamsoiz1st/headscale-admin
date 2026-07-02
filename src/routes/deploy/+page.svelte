@@ -21,7 +21,7 @@
 
 	function createFilter(user_id: string) {
 		return (pak: PreAuthKey) => {
-			return pak.user.id === user_id && !(pak.used && !pak.reusable) && !isExpired(pak.expiration);
+			return pak.user?.id === user_id && !(pak.used && !pak.reusable) && !isExpired(pak.expiration);
 		};
 	}
 

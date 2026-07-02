@@ -14,27 +14,22 @@ export async function getPreAuthKeys(
 	user_ids?: string[],
 	init?: RequestInit,
 ): Promise<PreAuthKey[]> {
-	if (user_ids == undefined) {
+	// Headscale 0.28+: omitting the user param returns all keys at once
+	try {
+		const { preAuthKeys } = await apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY, init);
+		if (preAuthKeys !== undefined) return preAuthKeys ?? [];
+	} catch (_) {
+		// Older Headscale requires a user filter — fall through
+	}
+	if (user_ids === undefined) {
 		user_ids = (await getUsers(init)).map((u) => u.id);
 	}
-	const promises: Promise<ApiPreAuthKeys>[] = [];
-	let preAuthKeysAll: PreAuthKey[] = [];
-
-	user_ids.forEach(async (user_id: string) => {
-		if(user_id != ""){
-			promises.push(
-				apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY + '?user=' + user_id, init),
-			);
-		}
-	});
-
-	promises.forEach(async (p) => {
-		const { preAuthKeys } = await p;
-		preAuthKeysAll = preAuthKeysAll.concat(preAuthKeys);
-	});
-
-	await Promise.all(promises);
-	return preAuthKeysAll;
+	const results = await Promise.all(
+		user_ids
+			.filter((id) => id !== '')
+			.map((user_id) => apiGet<ApiPreAuthKeys>(API_URL_PREAUTHKEY + '?user=' + user_id, init)),
+	);
+	return results.flatMap(({ preAuthKeys }) => preAuthKeys ?? []);
 }
 
 type GetUserOptions = 
@@ -60,8 +55,14 @@ export async function getUsers(init?: RequestInit, options?: GetUserOptions): Pr
 }
 
 export async function getNodes(): Promise<Node[]> {
-	const { nodes } = await apiGet<ApiNodes>(API_URL_NODE);
-	return nodes;
+	const response = await apiGet<any>(API_URL_NODE);
+	// Headscale 0.28+ replaced forcedTags/validTags/invalidTags with a unified `tags` field
+	return (response.nodes ?? []).map((node: any): Node => {
+		if (node.forcedTags === undefined) {
+			return { ...node, forcedTags: node.tags ?? [], validTags: [], invalidTags: [] };
+		}
+		return { ...node, forcedTags: node.forcedTags ?? [], validTags: node.validTags ?? [], invalidTags: node.invalidTags ?? [] };
+	});
 }
 
 export async function getPolicy(): Promise<string> {
